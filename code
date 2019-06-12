@@ -1,0 +1,86 @@
+/////////////////////////////////////////////////////////////////////////////////
+//将音频文件放在根目录下的sound文件夹 (sound)，支持.WAV、.MP3、.MIDI 这三种文件格式
+//模块的MOD跳针用于选择 串口(UART) 或者I2C接口,MONO短路子用于当只适用一个喇叭的时候
+//短路这个跳针作为单声道输出
+//电压 5V，电流保证有1000毫安，如果电流不够需要将音量调小或者使用单个喇叭
+//指示灯的功能： 开机后短促闪烁一次说明进入串口模式，闪烁两次进入I2C模式
+//               等待初始化成功后将长亮，如果SD卡未插好将一直闪烁同时
+//               如果是串口模块将输出 Plese check micro SD card\r\n
+///////////////////////串口或者I2C通信方式/////////////////////////////////////////////
+// 播放音频：语音文件名称\r\n 播放相应名称的歌曲，如果找到歌曲播放正确将返回 Play ok\r\n
+// 如果失败返回 Not found\r\n; 如果播放完毕返回 over\r\n(\r\n表示回车换行)
+// 语音文件名称不超过8个英文字母，4个中文。I2C接口无命令返回
+// 暂停播放\\:p\r\n   成功返回pause\r\n
+// 继续播放\\:s\r\n   成功返回start\r\n
+// 播放下一首\\:n\r\n   成功返回next\r\n，失败返回 false\r\n
+// 播放上一首\\:u\r\n  成功返回key up\r\n
+// 音量设置\\:v255\r\n，设置音量大小 数字 0-255 数字越大音量越大,成功返回vol set ok
+/////////////////////////////////////////////////////////////////////////////////
+
+//IIC接线方式
+//Arduino    MP3
+//模拟口4    DO
+//模拟口5    DI
+//5V         +5V
+//GND        GND
+
+#include <Wire.h>
+#include <stdlib.h>
+#define ArduinoPlayer_address 0x35  //定义ArduinoPlayer 语音播放模块I2C地址
+
+void TwiSend(const char  *cmd)  //I2C发送命令函数
+{
+  char len = 0;
+  len = strlen(cmd); //计算字符串长度
+  Wire.beginTransmission(ArduinoPlayer_address); // ArduinoPlayer 语音播放模块I2C地址
+  while(len--)
+  {
+    Wire.send(*(cmd++));     
+  }
+  Wire.endTransmission();    // stop transmitting
+}
+void setup()
+{
+  Wire.begin(); // join i2c bus (address optional for master)
+  Serial.begin(9600);
+  delay(2000);//等待2秒钟播放器初始化完成
+  Serial.println("Ready");
+  TwiSend("\\:v 255\r\n");    // 音量设置最大  数字 0-255 数字越大音量越大
+}
+
+//接收串口命令字符，执行相应操作
+void loop()
+{
+  int val;
+  if(Serial.available() > 0)
+  {
+    val=Serial.read();
+    switch(val)
+    {
+    case 'p':      // 暂停播放
+      TwiSend("\\:p\r\n");
+      Serial.println("OK");
+      break;
+    case 's':     // 继续播放
+      TwiSend("\\:s\r\n");
+      Serial.println("OK");
+      break;    
+    case  'n':
+      TwiSend("\\:n\r\n");  // 播放下一首
+      Serial.println("OK");
+      break;
+    case 'u':
+      TwiSend("\\:u\r\n"); // 播放上一首
+      Serial.println("OK");
+      break;
+    case  'm':      //播放名称为yes的音频文件
+      //注意：必须将音量控制放在播放之前
+      TwiSend("\\:v 250\r\n");    // 音量设置250 数字 0-255 数字越大音量越大
+      TwiSend("\\yes\r\n");
+      Serial.println("OK");
+      break;  
+    default:
+      break;   
+    }
+  }
+}
