@@ -1,0 +1,125 @@
+//用Arduino编译器的串口监视器即可看到结果，我们打什么文字进去，下面就会返回什么文字
+String comdata = "";  //comdata是一个字符串变量，用了String类型变量，很简单实现了字符到字符串的加入，还有字符串的输出，赋值等麻烦问题
+                      //comdat既是字符串又是数组我们需要每个字节取出的话，引用comdata[0], comdata[1],...
+
+void setup()
+{
+    Serial.begin(9600);
+}
+
+void loop()
+{
+    while (Serial.available() > 0)    //当前串口缓冲池数据
+    {
+        comdata += char(Serial.read());  //读缓冲池的语句，每次只读一个字节   
+        delay(2);                         //读串口的延时不能删除，否则串口缓冲区不够时间接收数据
+    }
+    if (comdata.length() > 0)
+    {
+        Serial.println(comdata);
+        comdata = "";
+    }
+}
+
+
+
+
+//在串口输入1011101..的话，就会令Arduino的D2~Dx引脚产生高/低电平，当然，一次发送的数据视Arduino引脚数而定，比如Arduino UNO/nano之类的，
+//只有D2~D13十二个引脚。我们打12个数字就好。比如101101011010，如果中间有非0和1的字符，则自动跳过该位设置：比如122202221222这样。因为2不是
+//允许范围内，就只设置D2/D6/D10的值了：
+
+String comdata = "";
+void setup()
+{
+  Serial.begin(9600);
+  for(int i = 2; i <= 13; i++) pinMode(i, OUTPUT);
+}
+
+void loop()
+{
+  while (Serial.available() > 0)
+  {
+    comdata += int(Serial.read()) - '0';
+    delay(2);
+  }
+  if(comdata.length() > 0)
+  {
+    for(int i = 0; i < comdata.length(); i++)
+    {
+      if(comdata[i]=='0'||comdata[i]=='1')
+      {
+        digitalWrite(i + 2, comdata[i] - '0');
+        Serial.print("Pin ");
+        Serial.print(i + 2);
+        Serial.print(" is ");
+        Serial.println(comdata[i]);
+      }
+    }
+    comdata = "";
+  }
+}
+
+
+
+
+
+///部分代码，串口接收命令符，然后执行
+void TwiSend(const char *cmd) //I2C发送命令函数
+{
+  char len = 0;
+  len = strlen(cmd); //计算字符串长度
+  Wire.beginTransmission(ArduinoPlayer_adress);
+  while(len- -);
+  {
+   Wire.write(*cmd++));
+   }
+  Wire.endTransmission(); //stop transmitting
+  }
+  void setup(){
+  Wire.begin();
+  Serial.begin(9600);
+  delay(2000);
+  Serial.println("Ready");
+  TwiSend("\\ : v 255\r\n);
+  }
+  //接收串口命令字符，执行相应操作
+void loop()
+{
+  int val;
+  if(Serial.available() >0)
+  {
+    val = Serial.read();
+    switch(val)
+    {
+      case 'p':    //暂停播放
+        TwiSend("\\:p\r\n");
+        Serial.println("OK");
+        break;
+      case 's':    //继续播放
+        TwiSend("\\:s\r\n");
+        Serial.println("OK");
+        break;
+       case 'n':    //播放下一首
+        TwiSend("\\:n\r\n");
+        Serial.println("OK");
+        break;
+        case 'u':    //播放上一首
+        TwiSend("\\:u\r\n");
+        Serial.println("OK");
+        break;
+       case 'm':    //播放名为yes的音频文件
+       //注意：必须将音量控制放在播放之前
+        TwiSend("\\:v 250\r\n"); //音量设置250 数字0-255数字越大音量越大
+        TwiSend("\\:yes\r\n");
+        Serial.println("OK");
+        break;
+        default:
+        break;
+    }
+  }
+}
+
+
+//接收串口命令字符，执行相应操作
+
+
